@@ -15,9 +15,8 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.weatherapplication.data.Coordinates
 import com.example.weatherapplication.databinding.ActivityMainBinding
 
-
 class MainActivity : AppCompatActivity() {
-    lateinit var weatherViewModel: WeatherViewModel
+    lateinit var mainViewModel: MainViewModel
     lateinit var binding: ActivityMainBinding
     lateinit var locationManager: LocationManager
     var cities = arrayListOf("London", "Paris", "Istanbul", "Tokyo", "Kyiv")
@@ -27,30 +26,37 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        spinnerSettings()
+        setDataForSpinner()
         requestPermissions()
 
-        weatherViewModel = ViewModelProvider(this).get(WeatherViewModel::class.java)
+        mainViewModel = ViewModelProvider(this).get(MainViewModel::class.java)
 
         binding.button.setOnClickListener {
-
             if (!currentCity.equals("My Location")){
-                weatherViewModel.getWeatherByCity(currentCity)
+                mainViewModel.getWeatherByCity(currentCity)
             } else {
-                weatherViewModel.getWeatherByCoordinates()
+                mainViewModel.getWeatherByCoordinates()
             }
         }
 
-        weatherViewModel.weatherResponse.observe(this, {
+        mainViewModel.weatherResponse.observe(this, {
             binding.textViewCity.text = it.name
-            binding.textViewTemperature.text = it.main.temp.toString()
+            binding.textViewTemperature.text = "${it.main.temp} ${"\u2103"}"
         })
-        weatherViewModel.isRequestFinished.observe(this, {
+        mainViewModel.isRequestFinished.observe(this, {
             binding.button.isEnabled = it
+            if (it) {
+                binding.button.text = "Get Weather"
+            } else {
+                binding.button.text = "Getting data"
+            }
+        })
+        mainViewModel.currentCoordinates.observe(this, {
+            binding.textViewCurrentLocation.text = "${it.lattitude} / ${it.longitude}"
         })
     }
 
-    private fun spinnerSettings() {
+    private fun setDataForSpinner() {
         val adapter = ArrayAdapter(
             this,
             R.layout.simple_spinner_item,
@@ -68,7 +74,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-    private fun getMyLocation() {
+    private fun getCurrentLocationCoordinates() {
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -83,11 +89,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         locationManager.requestLocationUpdates(
-            LocationManager.GPS_PROVIDER,
+            LocationManager.NETWORK_PROVIDER,
             100,
             10f,
             {
-              weatherViewModel.setCurrentCoordinates(Coordinates(it.latitude, it.longitude))
+              mainViewModel.setCurrentCoordinates(Coordinates(it.latitude, it.longitude))
             })
     }
 
@@ -110,7 +116,7 @@ class MainActivity : AppCompatActivity() {
                 if(!cities.last().equals("My Location"))
                     cities.add("My Location")
 
-                getMyLocation()
+                getCurrentLocationCoordinates()
             }
         }
     }
