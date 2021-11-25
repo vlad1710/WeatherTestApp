@@ -6,11 +6,9 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.ViewModelProvider
@@ -22,7 +20,6 @@ class MainActivity : AppCompatActivity() {
     lateinit var weatherViewModel: WeatherViewModel
     lateinit var binding: ActivityMainBinding
     lateinit var locationManager: LocationManager
-    var coordinates = Coordinates(0.0, 0.0)
     var cities = arrayListOf("London", "Paris", "Istanbul", "Tokyo", "Kyiv")
     var currentCity = "London"
 
@@ -36,15 +33,20 @@ class MainActivity : AppCompatActivity() {
         weatherViewModel = ViewModelProvider(this).get(WeatherViewModel::class.java)
 
         binding.button.setOnClickListener {
+
             if (!currentCity.equals("My Location")){
                 weatherViewModel.getWeatherByCity(currentCity)
             } else {
-                getMyLocation()
+                weatherViewModel.getWeatherByCoordinates()
             }
         }
 
-        weatherViewModel.data.observe(this, {
-            binding.textViewWeatherResponse.text = it.toString()
+        weatherViewModel.weatherResponse.observe(this, {
+            binding.textViewCity.text = it.name
+            binding.textViewTemperature.text = it.main.temp.toString()
+        })
+        weatherViewModel.isRequestFinished.observe(this, {
+            binding.button.isEnabled = it
         })
     }
 
@@ -66,7 +68,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun getMyLocation() {
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         if (ActivityCompat.checkSelfPermission(
@@ -86,11 +87,7 @@ class MainActivity : AppCompatActivity() {
             100,
             10f,
             {
-                coordinates.lattitude = it.latitude
-                coordinates.longitude = it.longitude
-                weatherViewModel.getWeatherByCoordinates(coordinates)
-                Log.i("kkk", it.latitude.toString()) // todo log
-                Log.i("kkk", it.longitude.toString())
+              weatherViewModel.setCurrentCoordinates(Coordinates(it.latitude, it.longitude))
             })
     }
 
@@ -110,10 +107,10 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 789) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                cities.add("My Location")
+                if(!cities.last().equals("My Location"))
+                    cities.add("My Location")
+
                 getMyLocation()
-            } else {
-                Toast.makeText(this, "Enable location permissions", Toast.LENGTH_SHORT).show()
             }
         }
     }
